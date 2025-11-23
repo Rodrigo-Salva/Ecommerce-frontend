@@ -1,3 +1,4 @@
+// src/components/Navbar.js
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -28,6 +29,9 @@ const Navbar = () => {
         <div className={`navbar-menu ${menuOpen ? 'active' : ''}`}>
           <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>
             Inicio
+          </Link>
+          <Link to="/categorias" className="nav-link" onClick={() => setMenuOpen(false)}>
+            Categorías
           </Link>
         </div>
 

@@ -4,6 +4,8 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import DetalleProducto from './pages/DetalleProducto';
 import Carrito from './pages/Carrito';
+import Categorias from './pages/Categorias';
+import ProductosPorCategoria from './pages/ProductosPorCategoria';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -14,19 +16,12 @@ function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/producto/:id" element={<DetalleProducto />} />
+          <Route path="/producto/:slugOrId" element={<DetalleProducto />} />
           <Route path="/carrito" element={<Carrito />} />
+          <Route path="/categorias" element={<Categorias />} />
+          <Route path="/categoria/:slug" element={<ProductosPorCategoria />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
-          {/* Rutas protegidas - descomenta si quieres proteger el carrito
-          <Route 
-            path="/carrito" 
-            element={
-              // Si activas esta ruta recuerda importar y usar ProtectedRoute
-            }
-          />
-          */}
         </Routes>
       </div>
     </Router>

@@ -1,10 +1,11 @@
-// src/pages/Home.js
 import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { getAllProducts, getAllCategories, API_URL } from '../services/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { getAllProducts, getAllCategories, API_URL, productAPI } from '../services/api';
 import './Home.css';
 
 const Home = () => {
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const categoriaParam = searchParams.get('categoria');
   
@@ -14,30 +15,25 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Cargar productos
   useEffect(() => {
     const fetchProductos = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        const params = {};
+        const all = await getAllProducts();
+        const results = all.results || all || [];
         
-        // Filtrar por categoría si existe
+        let filteredProducts = results;
+        
         if (categoriaParam && categoriaParam !== 'todos') {
-          params.category = categoriaParam;
+          filteredProducts = results.filter(p => {
+            const categorySlug = p.category?.slug || '';
+            return categorySlug === categoriaParam;
+          });
         }
-
-  // Usar la función getAllProducts con soporte para filtros
-  let data = [];
-  if (Object.keys(params).length > 0) {
-    // Si hay filtros, obtener todos y filtrar manualmente (demo backend)
-    const all = await getAllProducts();
-    data = all.filter(p => !params.category || (p.category === params.category));
-  } else {
-    data = await getAllProducts();
-  }
-  setProductos(data.results || data || []);
+        
+        setProductos(filteredProducts);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -48,14 +44,12 @@ const Home = () => {
     fetchProductos();
   }, [categoriaParam]);
 
-  // Cargar categorías
   useEffect(() => {
     const fetchCategorias = async () => {
       try {
         const data = await getAllCategories();
         let cats = data.results || data || [];
 
-        // Si el backend devuelve un array de strings, normalizarlos a objetos
         if (cats.length > 0 && typeof cats[0] === 'string') {
           const slugify = (s) =>
             s
@@ -79,6 +73,15 @@ const Home = () => {
     setCategoriaActiva(categoriaSlug);
   };
 
+  const handleProductHover = (slug) => {
+    if (!slug) return;
+    queryClient.prefetchQuery({
+      queryKey: ['product', slug],
+      queryFn: () => productAPI.getBySlug(slug),
+      staleTime: 1000 * 60 * 5,
+    });
+  };
+
   if (loading) {
     return (
       <div className="loading-container">
@@ -97,7 +100,6 @@ const Home = () => {
 
   return (
     <div className="home">
-      {/* Hero Section */}
       <section className="hero">
         <div className="container">
           <div className="hero-content fade-in">
@@ -120,7 +122,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Categorías Section */}
       <section id="categorias" className="categorias-section">
         <div className="container">
           <h2 className="section-title">Explora por Categoría</h2>
@@ -147,7 +148,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Productos Section */}
       <section id="productos" className="productos-section">
         <div className="container">
           <div className="productos-header">
@@ -190,7 +190,12 @@ const Home = () => {
               const rating = producto.average_rating || '0.0';
 
               return (
-                <Link key={producto.id || slugOrId} to={`/producto/${slugOrId}`} className="producto-card">
+                <Link
+                  key={producto.id || slugOrId}
+                  to={`/producto/${slugOrId}`}
+                  className="producto-card"
+                  onMouseEnter={() => handleProductHover(producto.slug)}
+                >
                   <div className="producto-imagen">
                     {image ? (
                       <img src={`${API_URL}${image}`} alt={producto.name || 'Producto'} />
@@ -230,7 +235,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="features-section">
         <div className="container">
           <div className="features-grid">

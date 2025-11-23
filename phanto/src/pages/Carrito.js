@@ -1,19 +1,84 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCart } from '../hooks/useCart';
+import { API_URL, productAPI } from '../services/api';
 import './Carrito.css';
 
 const Carrito = () => {
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
-  const total = getCartTotal();
+  const queryClient = useQueryClient();
+  const { 
+    cart, 
+    isLoading, 
+    error,
+    updateItem,
+    removeItem,
+    clearCart,
+    isUpdatingItem,
+    isRemovingItem,
+    isClearingCart
+  } = useCart();
 
-  const handleCantidadChange = (productoId, nuevaCantidad) => {
-    if (nuevaCantidad <= 0) {
-      removeFromCart(productoId);
+  const handleProductHover = (slug) => {
+    if (!slug) return;
+    queryClient.prefetchQuery({
+      queryKey: ['product', slug],
+      queryFn: () => productAPI.getBySlug(slug),
+      staleTime: 1000 * 60 * 5,
+    });
+  };
+
+  const handleCantidadChange = (itemId, currentQuantity, change) => {
+    const newQuantity = currentQuantity + change;
+    
+    if (newQuantity <= 0) {
+      removeItem(itemId);
     } else {
-      updateQuantity(productoId, nuevaCantidad);
+      updateItem({ itemId, quantity: newQuantity });
     }
   };
+
+  const handleRemoveItem = (itemId) => {
+    if (window.confirm('¿Eliminar este producto del carrito?')) {
+      removeItem(itemId);
+    }
+  };
+
+  const handleClearCart = () => {
+    if (window.confirm('¿Estás seguro de vaciar todo el carrito?')) {
+      clearCart();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="carrito-page">
+        <div className="container">
+          <div className="loading-container">
+            <p>Cargando carrito...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="carrito-page">
+        <div className="container">
+          <div className="error-container">
+            <p>Error al cargar el carrito: {error.message}</p>
+            <Link to="/" className="btn btn-primary">
+              Volver al Inicio
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const cartItems = cart?.items || [];
+  const totalPrice = parseFloat(cart?.total_price || 0);
 
   if (cartItems.length === 0) {
     return (
@@ -41,88 +106,116 @@ const Carrito = () => {
       <div className="container">
         <div className="carrito-header">
           <h1 className="carrito-titulo">Carrito de Compras</h1>
-          <button className="btn-limpiar" onClick={clearCart}>
+          <button 
+            className="btn-limpiar" 
+            onClick={handleClearCart}
+            disabled={isClearingCart}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
             </svg>
-            Vaciar Carrito
+            {isClearingCart ? 'Vaciando...' : 'Vaciar Carrito'}
           </button>
         </div>
 
         <div className="carrito-grid">
-          {/* Items del Carrito */}
           <div className="carrito-items">
-            {cartItems.map((item) => (
-              <div key={item.id} className="carrito-item">
-                <Link to={`/producto/${item.id}`} className="item-imagen">
-                  <div className="imagen-placeholder-carrito">
-                    <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                      <rect x="3" y="3" width="18" height="18" rx="2"/>
-                      <circle cx="8.5" cy="8.5" r="1.5"/>
-                      <path d="M21 15l-5-5L5 21"/>
-                    </svg>
-                  </div>
-                </Link>
+            {cartItems.map((item) => {
+              const producto = item.product || {};
+              const precio = parseFloat(producto.final_price || producto.price || 0);
+              const cantidad = item.quantity || 1;
+              const itemId = item.id;
 
-                <div className="item-info">
-                  <Link to={`/producto/${item.id}`} className="item-nombre">
-                    {item.nombre}
+              return (
+                <div key={itemId} className="carrito-item">
+                  <Link
+                    to={`/producto/${producto.slug || producto.id}`}
+                    className="item-imagen"
+                    onMouseEnter={() => handleProductHover(producto.slug)}
+                  >
+                    {producto.primary_image ? (
+                      <img 
+                        src={`${API_URL}${producto.primary_image}`}
+                        alt={producto.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <div className="imagen-placeholder-carrito">
+                        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <path d="M21 15l-5-5L5 21"/>
+                        </svg>
+                      </div>
+                    )}
                   </Link>
-                  <p className="item-categoria">{item.categoria}</p>
-                  <p className="item-precio-unitario">${item.precio} c/u</p>
-                </div>
 
-                <div className="item-cantidad">
+                  <div className="item-info">
+                    <Link
+                      to={`/producto/${producto.slug || producto.id}`}
+                      className="item-nombre"
+                      onMouseEnter={() => handleProductHover(producto.slug)}
+                    >
+                      {producto.name}
+                    </Link>
+                    <p className="item-categoria">{producto.category?.name}</p>
+                    <p className="item-precio-unitario">${precio.toFixed(2)} c/u</p>
+                  </div>
+
+                  <div className="item-cantidad">
+                    <button
+                      className="cantidad-btn-carrito"
+                      onClick={() => handleCantidadChange(itemId, cantidad, -1)}
+                      disabled={isUpdatingItem}
+                    >
+                      −
+                    </button>
+                    <span className="cantidad-valor">{cantidad}</span>
+                    <button
+                      className="cantidad-btn-carrito"
+                      onClick={() => handleCantidadChange(itemId, cantidad, 1)}
+                      disabled={isUpdatingItem}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="item-precio-total">
+                    ${(precio * cantidad).toFixed(2)}
+                  </div>
+
                   <button
-                    className="cantidad-btn-carrito"
-                    onClick={() => handleCantidadChange(item.id, item.cantidad - 1)}
+                    className="item-eliminar"
+                    onClick={() => handleRemoveItem(itemId)}
+                    disabled={isRemovingItem}
+                    title="Eliminar producto"
                   >
-                    −
-                  </button>
-                  <span className="cantidad-valor">{item.cantidad}</span>
-                  <button
-                    className="cantidad-btn-carrito"
-                    onClick={() => handleCantidadChange(item.id, item.cantidad + 1)}
-                  >
-                    +
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
                   </button>
                 </div>
-
-                <div className="item-precio-total">
-                  ${item.precio * item.cantidad}
-                </div>
-
-                <button
-                  className="item-eliminar"
-                  onClick={() => removeFromCart(item.id)}
-                  title="Eliminar producto"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                  </svg>
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          {/* Resumen del Carrito */}
           <div className="carrito-resumen">
             <h3 className="resumen-titulo">Resumen del Pedido</h3>
 
             <div className="resumen-detalles">
               <div className="resumen-linea">
-                <span>Subtotal</span>
-                <span>${total}</span>
+                <span>Subtotal ({cart?.total_items || 0} productos)</span>
+                <span>${totalPrice.toFixed(2)}</span>
               </div>
               <div className="resumen-linea">
                 <span>Envío</span>
-                <span className={total >= 1000 ? 'gratis' : ''}>
-                  {total >= 1000 ? 'Gratis' : '$50'}
+                <span className={totalPrice >= 1000 ? 'gratis' : ''}>
+                  {totalPrice >= 1000 ? 'Gratis' : '$50.00'}
                 </span>
               </div>
-              {total >= 1000 && (
+              {totalPrice >= 1000 && (
                 <div className="envio-gratis-badge">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polyline points="20 6 9 17 4 12"/>
@@ -133,7 +226,7 @@ const Carrito = () => {
               <div className="resumen-divider"></div>
               <div className="resumen-linea total">
                 <span>Total</span>
-                <span>${total + (total >= 1000 ? 0 : 50)}</span>
+                <span>${(totalPrice + (totalPrice >= 1000 ? 0 : 50)).toFixed(2)}</span>
               </div>
             </div>
 
