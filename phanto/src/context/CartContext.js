@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useCartAPI } from '../hooks/useCart';
 
 const CartContext = createContext();
 
@@ -11,78 +12,64 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const cartAPI = useCartAPI();
+  const [localCart, setLocalCart] = useState([]);
 
+  // Sincronizar carrito de API con localStorage
   useEffect(() => {
-    // Cargar carrito desde localStorage
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
-  }, []);
-
-  useEffect(() => {
-    // Guardar carrito en localStorage cuando cambie
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  const addToCart = (producto, cantidad = 1) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === producto.id);
+    if (cartAPI.cart && cartAPI.cart.items) {
+      // Transformar items de API al formato local
+      const transformedItems = cartAPI.cart.items.map(item => ({
+        id: item.product.id,
+        nombre: item.product.name,
+        precio: item.product.final_price || item.product.price,
+        cantidad: item.quantity,
+        slug: item.product.slug,
+        category: item.product.category?.name,
+        stock: item.product.stock,
+      }));
       
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.id === producto.id
-            ? { ...item, cantidad: item.cantidad + cantidad }
-            : item
-        );
-      }
-      
-      return [...prevItems, { ...producto, cantidad }];
-    });
-  };
-
-  const removeFromCart = (productoId) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== productoId));
-  };
-
-  const updateQuantity = (productoId, cantidad) => {
-    if (cantidad <= 0) {
-      removeFromCart(productoId);
-      return;
+      setLocalCart(transformedItems);
+      localStorage.setItem('cart', JSON.stringify(transformedItems));
     }
-    
-    setCartItems(prevItems =>
-      prevItems.map(item =>
-        item.id === productoId ? { ...item, cantidad } : item
-      )
-    );
-  };
-
-  const clearCart = () => {
-    setCartItems([]);
-  };
-
-  const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.precio * item.cantidad), 0);
-  };
+  }, [cartAPI.cart]);
 
   const getCartCount = () => {
-    return cartItems.reduce((count, item) => count + item.cantidad, 0);
+    return localCart.reduce((sum, item) => sum + item.cantidad, 0);
   };
 
-  const value = {
-    cartItems,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    getCartTotal,
-    getCartCount
+  const getTotalPrice = () => {
+    return localCart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
   };
 
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider
+      value={{
+        // Datos del carrito
+        cartItems: localCart,
+        cart: cartAPI.cart,
+        isLoading: cartAPI.isLoading,
+        error: cartAPI.error,
+        
+        // Métodos de acceso
+        getCartCount,
+        getTotalPrice,
+        
+        // Métodos del API
+        addItem: cartAPI.addItem,
+        addItemAsync: cartAPI.addItemAsync,
+        updateItem: cartAPI.updateItem,
+        removeItem: cartAPI.removeItem,
+        clearCart: cartAPI.clearCart,
+        refetch: cartAPI.refetch,
+        
+        // Estados de carga
+        isAddingItem: cartAPI.isAddingItem,
+        isUpdatingItem: cartAPI.isUpdatingItem,
+        isRemovingItem: cartAPI.isRemovingItem,
+        isClearingCart: cartAPI.isClearingCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

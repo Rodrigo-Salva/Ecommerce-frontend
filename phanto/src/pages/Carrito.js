@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCart } from '../hooks/useCart';
+import { useCart } from '../context/CartContext';
 import { API_URL, productAPI } from '../services/api';
 import './Carrito.css';
 

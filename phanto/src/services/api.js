@@ -7,6 +7,7 @@ const fetchAPI = async (endpoint, options = {}) => {
   
   try {
     const response = await fetch(url, {
+      credentials: 'include', // Enviar cookies (incluyendo sessionid)
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -50,7 +51,9 @@ export const productAPI = {
     const queryString = queryParams.toString();
     const endpoint = `/api/products/${queryString ? `?${queryString}` : ''}`;
     
-    return fetchAPI(endpoint);
+    const data = await fetchAPI(endpoint);
+    // Normalizar respuesta: si tiene "results", devolver eso; si no, devolver directamente
+    return data.results || data || [];
   },
 
   // GET /api/products/{slug}/ - Detalle completo
@@ -60,7 +63,9 @@ export const productAPI = {
 
   // GET /api/products/{slug}/related/ - Productos relacionados
   getRelated: async (slug) => {
-    return fetchAPI(`/api/products/${slug}/related/`);
+    const data = await fetchAPI(`/api/products/${slug}/related/`);
+    // Normalizar respuesta
+    return data.results || data || [];
   },
 };
 
@@ -71,7 +76,9 @@ export const productAPI = {
 export const categoryAPI = {
   // GET /api/products/categories/ - Lista todas las categorías
   getAll: async () => {
-    return fetchAPI('/api/products/categories/');
+    const data = await fetchAPI('/api/products/categories/');
+    // Normalizar respuesta: si tiene "results", devolver eso; si no, devolver el array directo
+    return data.results || data || [];
   },
 
   // GET /api/products/categories/{slug}/ - Detalle de categoría
@@ -81,7 +88,9 @@ export const categoryAPI = {
 
   // GET /api/products/categories/{slug}/products/ - Productos por categoría
   getProducts: async (slug) => {
-    return fetchAPI(`/api/products/categories/${slug}/products/`);
+    const data = await fetchAPI(`/api/products/categories/${slug}/products/`);
+    // Normalizar respuesta: si tiene "results", devolver eso; si es array, devolverlo directo
+    return data.results || data || [];
   },
 };
 
