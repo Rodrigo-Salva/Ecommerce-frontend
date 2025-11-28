@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { API_URL } from '../services/api';
+import { orderAPI, API_URL } from '../services/api';
+import StripePaymentForm from '../components/StripePaymentForm';
 import './Checkout.css';
 
 const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { cart, getTotalPrice } = useCart();
+  const { cart, getTotalPrice, clearCart } = useCart();
   const [step, setStep] = useState('resumen'); // resumen, datos, pago, confirmacion
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -21,10 +22,13 @@ const Checkout = () => {
     ciudad: '',
     provincia: '',
     codigoPostal: '',
+    pais: 'Perú', // Valor por defecto
     direccion: '',
     referencias: '',
     metodoPago: 'tarjeta', // tarjeta, transferencia, efectivo
   });
+
+  const [orderNumber, setOrderNumber] = useState(null);
 
   const cartItems = cart?.items || [];
   const subtotal = getTotalPrice() || 0;
@@ -77,7 +81,7 @@ const Checkout = () => {
     setError('');
   };
 
-  const handleProcessPayment = async () => {
+  const handleProcessPayment = async (paymentIntentId = null) => {
     if (!formData.metodoPago) {
       setError('Selecciona un método de pago');
       return;
@@ -87,41 +91,63 @@ const Checkout = () => {
     setError('');
 
     try {
-      // Crear orden
+      // Crear orden con datos del formulario
       const orderData = {
-        shipping_address: {
-          email: formData.email,
-          name: `${formData.nombre} ${formData.apellido}`,
-          phone: formData.telefono,
-          city: formData.ciudad,
-          province: formData.provincia,
-          postal_code: formData.codigoPostal,
-          address: formData.direccion,
-          notes: formData.referencias,
-        },
+        full_name: `${formData.nombre} ${formData.apellido}`,
+        email: formData.email,
+        phone: formData.telefono,
+        address_line1: formData.direccion,
+        city: formData.ciudad,
+        state: formData.provincia,
+        postal_code: formData.codigoPostal,
+        country: formData.pais,
+        order_notes: formData.referencias,
         payment_method: formData.metodoPago,
-        total: total,
         items: cartItems.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity,
-          price: item.product.final_price || item.product.price,
         })),
       };
 
       console.log('📦 Enviando orden:', orderData);
 
-      // Aquí iría la llamada a la API de órdenes cuando esté disponible
-      // Por ahora, simulamos el éxito
-      
-      // Simular delay de procesamiento
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      let response;
 
+      // Si es pago con tarjeta (Stripe), usar confirm_payment endpoint
+      if (formData.metodoPago === 'tarjeta' && paymentIntentId) {
+        const confirmResponse = await fetch('http://127.0.0.1:8000/api/orders/confirm-payment/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            payment_intent_id: paymentIntentId,
+            order: orderData,
+          }),
+        });
+
+        if (!confirmResponse.ok) {
+          throw new Error('Error confirmando pago');
+        }
+
+        response = await confirmResponse.json();
+      } else {
+        // Para otros métodos (efectivo, transferencia), crear orden directamente
+        response = await orderAPI.create(orderData);
+      }
+      
+      console.log('✅ Orden creada:', response);
+      
+      // Guardar número de orden y limpiar carrito
+      setOrderNumber(response.order_number);
+      clearCart();
+      
       // Mostrar confirmación
       setStep('confirmacion');
       
     } catch (err) {
       setError(err.message || 'Error procesando el pago');
-      console.error('Error:', err);
+      console.error('❌ Error:', err);
     } finally {
       setLoading(false);
     }
@@ -349,6 +375,17 @@ const Checkout = () => {
                           required
                         />
                       </div>
+                      <div className="form-group">
+                        <label>País</label>
+                        <input
+                          type="text"
+                          name="pais"
+                          value={formData.pais}
+                          onChange={handleInputChange}
+                          placeholder="Perú"
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -435,6 +472,22 @@ const Checkout = () => {
                       </div>
                     </label>
 
+                    {formData.metodoPago === 'tarjeta' && (
+                      <div className="stripe-container">
+                        <StripePaymentForm 
+                          amount={total}
+                          onSuccess={(paymentIntentId) => {
+                            console.log('✅ Pago exitoso:', paymentIntentId);
+                            handleProcessPayment(paymentIntentId);
+                          }}
+                          onError={(error) => {
+                            console.error('❌ Error de pago:', error);
+                          }}
+                          isProcessing={loading}
+                        />
+                      </div>
+                    )}
+
                     <label className="metodo-pago">
                       <input
                         type="radio"
@@ -491,16 +544,18 @@ const Checkout = () => {
                   </div>
 
                   <div className="paso-acciones">
-                    <button 
-                      className="btn btn-primary" 
-                      onClick={handleProcessPayment}
-                      disabled={loading}
-                    >
-                      {loading ? 'Procesando...' : 'Completar Compra'}
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="20 6 9 17 4 12"/>
-                      </svg>
-                    </button>
+                    {formData.metodoPago !== 'tarjeta' && (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => handleProcessPayment()}
+                        disabled={loading}
+                      >
+                        {loading ? 'Procesando...' : 'Completar Compra'}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </button>
+                    )}
                     <button 
                       className="btn btn-secondary" 
                       onClick={() => setStep('datos')}
@@ -521,7 +576,7 @@ const Checkout = () => {
                     </svg>
                   </div>
                   <h2>¡Compra Confirmada!</h2>
-                  <p className="confirmacion-subtitulo">Número de Orden: #ORD-{Date.now().toString().slice(-6)}</p>
+                  <p className="confirmacion-subtitulo">Número de Orden: #{orderNumber || 'PROCESANDO...'}</p>
                   
                   <div className="confirmacion-detalles">
                     <h4>Detalles del Pedido</h4>

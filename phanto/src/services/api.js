@@ -221,6 +221,36 @@ export const userAPI = {
   },
 };
 
+export const orderAPI = {
+  getAll: async () => {
+    const data = await fetchAPI('/api/orders/');
+    return data.results || data || [];
+  },
+
+  getById: async (orderNumber) => {
+    return fetchAPI(`/api/orders/${orderNumber}/`);
+  },
+
+  create: async (orderData) => {
+    return fetchAPI('/api/orders/', {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+    });
+  },
+
+  cancel: async (orderNumber) => {
+    return fetchAPI(`/api/orders/${orderNumber}/cancel/`, {
+      method: 'PUT',
+    });
+  },
+
+  getInvoice: async (orderNumber) => {
+    return fetchAPI(`/api/orders/${orderNumber}/invoice/`, {
+      method: 'GET',
+    });
+  },
+};
+
 export const API_URL = API_BASE_URL;
 export const getAllProducts = productAPI.getAll;
 export const getProductBySlug = productAPI.getBySlug;

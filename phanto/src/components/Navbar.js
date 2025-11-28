@@ -57,6 +57,9 @@ const Navbar = () => {
                 <Link to="/perfil" className="dropdown-item" onClick={() => setMenuOpen(false)}>
                   Mi Perfil
                 </Link>
+                <Link to="/mis-ordenes" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                  Mis Órdenes
+                </Link>
                 <button onClick={handleLogout} className="dropdown-item">
                   Cerrar Sesión
                 </button>

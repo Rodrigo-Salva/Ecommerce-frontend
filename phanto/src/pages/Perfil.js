@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userAPI } from '../services/api';
+import { userAPI, orderAPI } from '../services/api';
 import './Perfil.css';
 
 const Perfil = () => {
@@ -36,9 +36,13 @@ const Perfil = () => {
     is_default: false
   });
 
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
   useEffect(() => {
     loadProfile();
     loadAddresses();
+    loadOrders();
   }, []);
 
   const loadProfile = async () => {
@@ -64,6 +68,18 @@ const Perfil = () => {
       setAddresses(data);
     } catch (err) {
       console.error('Error al cargar direcciones:', err);
+    }
+  };
+
+  const loadOrders = async () => {
+    try {
+      setLoadingOrders(true);
+      const data = await orderAPI.getAll();
+      setOrders(data.results || data);
+    } catch (err) {
+      console.error('Error al cargar órdenes:', err);
+    } finally {
+      setLoadingOrders(false);
     }
   };
 
@@ -248,6 +264,12 @@ const Perfil = () => {
             onClick={() => setActiveTab('addresses')}
           >
             Direcciones
+          </button>
+          <button
+            className={`tab ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            Mis Órdenes
           </button>
         </div>
 
@@ -545,6 +567,64 @@ const Perfil = () => {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'orders' && (
+            <div className="tab-content">
+              <div className="section-header">
+                <h2>Mis Órdenes</h2>
+              </div>
+
+              {loadingOrders ? (
+                <p>Cargando órdenes...</p>
+              ) : orders.length === 0 ? (
+                <p className="empty-message">No tienes órdenes aún</p>
+              ) : (
+                <div className="orders-list">
+                  {orders.map((order) => (
+                    <div key={order.id} className="order-card">
+                      <div className="order-header">
+                        <div>
+                          <h4>Orden #{order.order_number}</h4>
+                          <p className="order-date">
+                            {new Date(order.created_at).toLocaleDateString('es-PE')}
+                          </p>
+                        </div>
+                        <div className={`order-status status-${order.status}`}>
+                          {order.status === 'pending' && 'Pendiente'}
+                          {order.status === 'confirmed' && 'Confirmada'}
+                          {order.status === 'processing' && 'En Proceso'}
+                          {order.status === 'shipped' && 'Enviada'}
+                          {order.status === 'in_transit' && 'En Tránsito'}
+                          {order.status === 'delivered' && 'Entregada'}
+                          {order.status === 'cancelled' && 'Cancelada'}
+                          {order.status === 'refunded' && 'Reembolsada'}
+                        </div>
+                      </div>
+                      <div className="order-items">
+                        <p><strong>Artículos:</strong> {order.items?.length || 0}</p>
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} className="order-item">
+                            <span>{item.product_name}</span>
+                            <span className="qty">x{item.quantity}</span>
+                            <span className="price">${item.price}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="order-footer">
+                        <div className="order-total">
+                          <strong>Total:</strong>
+                          <span>${order.total_amount}</span>
+                        </div>
+                        <button className="btn btn-secondary" onClick={() => orderAPI.getInvoice(order.order_number)}>
+                          Ver Factura
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
