@@ -8,6 +8,7 @@ import Categorias from './pages/Categorias';
 import ProductosPorCategoria from './pages/ProductosPorCategoria';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Perfil from './pages/Perfil';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/categoria/:slug" element={<ProductosPorCategoria />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/perfil" element={<Perfil />} />
         </Routes>
       </div>
     </Router>

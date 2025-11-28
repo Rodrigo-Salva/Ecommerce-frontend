@@ -1,4 +1,3 @@
-// src/components/Navbar.js
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -52,9 +51,12 @@ const Navbar = () => {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                <span>{user.nombre}</span>
+                <span>{user.username}</span>
               </button>
               <div className="dropdown-menu">
+                <Link to="/perfil" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                  Mi Perfil
+                </Link>
                 <button onClick={handleLogout} className="dropdown-item">
                   Cerrar Sesión
                 </button>

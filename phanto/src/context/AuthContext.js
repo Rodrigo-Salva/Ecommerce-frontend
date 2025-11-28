@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -15,45 +16,62 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Verificar si hay un usuario guardado en localStorage
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const storedTokens = localStorage.getItem('authTokens');
+    
+    if (storedUser && storedTokens) {
       setUser(JSON.parse(storedUser));
     }
     setLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    // Simulación de login (aquí iría la llamada a tu API)
-    const userData = {
-      id: 1,
-      nombre: 'Usuario Demo',
-      email: email,
-      avatar: null
-    };
-    
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    return { success: true };
+  const login = async (username, password) => {
+    try {
+      const response = await authAPI.login(username, password);
+      
+      const tokens = {
+        access: response.access,
+        refresh: response.refresh,
+      };
+
+      const userData = {
+        username: username,
+      };
+
+      localStorage.setItem('authTokens', JSON.stringify(tokens));
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error en login:', error);
+      return { success: false, error: error.message };
+    }
   };
 
-  const register = (nombre, email, password) => {
-    // Simulación de registro (aquí iría la llamada a tu API)
-    const userData = {
-      id: Date.now(),
-      nombre: nombre,
-      email: email,
-      avatar: null
-    };
-    
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-    return { success: true };
+  const register = async (username, email, password, password2, firstName, lastName) => {
+    try {
+      await authAPI.register({
+        username,
+        email,
+        password,
+        password2,
+        first_name: firstName,
+        last_name: lastName,
+      });
+
+      const loginResult = await login(username, password);
+      return loginResult;
+    } catch (error) {
+      console.error('Error en registro:', error);
+      return { success: false, error: error.message };
+    }
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('authTokens');
   };
 
   const value = {
@@ -62,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 
   return (
