@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import DetalleProducto from './pages/DetalleProducto';
 import Carrito from './pages/Carrito';
+import Checkout from './pages/Checkout';
 import Categorias from './pages/Categorias';
 import ProductosPorCategoria from './pages/ProductosPorCategoria';
 import Login from './pages/Login';
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/producto/:slugOrId" element={<DetalleProducto />} />
           <Route path="/carrito" element={<Carrito />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/categorias" element={<Categorias />} />
           <Route path="/categoria/:slug" element={<ProductosPorCategoria />} />
           <Route path="/login" element={<Login />} />

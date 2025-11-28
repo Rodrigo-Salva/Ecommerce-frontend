@@ -66,7 +66,10 @@ const Register = () => {
     if (result.success) {
       navigate('/');
     } else {
-      setError(result.error || 'Error al crear la cuenta');
+      // Si el error contiene saltos de línea, lo mostraremos tal cual
+      // De lo contrario, lo formateamos
+      const errorMsg = result.error || 'Error al crear la cuenta';
+      setError(errorMsg);
     }
     
     setLoading(false);

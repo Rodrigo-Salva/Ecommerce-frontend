@@ -29,13 +29,23 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login(username, password);
       
+      // Soportar ambas estructuras de respuesta del backend
+      const accessToken = response.access || response.tokens?.access;
+      const refreshToken = response.refresh || response.tokens?.refresh;
+      
+      if (!accessToken || !refreshToken) {
+        throw new Error('No se recibieron tokens válidos del servidor');
+      }
+      
       const tokens = {
-        access: response.access,
-        refresh: response.refresh,
+        access: accessToken,
+        refresh: refreshToken,
       };
 
       const userData = {
         username: username,
+        id: response.user?.id,
+        email: response.user?.email,
       };
 
       localStorage.setItem('authTokens', JSON.stringify(tokens));
@@ -51,7 +61,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password, password2, firstName, lastName) => {
     try {
-      await authAPI.register({
+      const response = await authAPI.register({
         username,
         email,
         password,
@@ -60,11 +70,28 @@ export const AuthProvider = ({ children }) => {
         last_name: lastName,
       });
 
+      // Auto-login después del registro exitoso
       const loginResult = await login(username, password);
       return loginResult;
     } catch (error) {
       console.error('Error en registro:', error);
-      return { success: false, error: error.message };
+      
+      // Extraer mensajes de error más claros
+      let errorMessage = error.message;
+      
+      if (error.message.includes('|')) {
+        // Si hay múltiples errores de campo
+        errorMessage = error.message.split(' | ').join('\n');
+      }
+      
+      // Mensajes más amigables en español
+      if (errorMessage.includes('email:') && errorMessage.includes('already exists')) {
+        errorMessage = 'Este email ya está registrado. Intenta con otro.';
+      } else if (errorMessage.includes('username:') && errorMessage.includes('already exists')) {
+        errorMessage = 'Este nombre de usuario ya existe. Intenta con otro.';
+      }
+      
+      return { success: false, error: errorMessage };
     }
   };
 

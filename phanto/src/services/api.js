@@ -36,7 +36,28 @@ const fetchAPI = async (endpoint, options = {}) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('API Error Response:', errorData);
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      console.error('Full error details:', JSON.stringify(errorData, null, 2));
+      
+      // Extraer mensaje de error detallado
+      let errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
+      
+      // Si hay errores por campo, concatenarlos
+      if (typeof errorData === 'object') {
+        const fieldErrors = Object.entries(errorData)
+          .map(([field, errors]) => {
+            if (Array.isArray(errors)) {
+              return `${field}: ${errors.join(', ')}`;
+            }
+            return `${field}: ${errors}`;
+          })
+          .join(' | ');
+        
+        if (fieldErrors) {
+          errorMessage = fieldErrors;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     return await response.json();
