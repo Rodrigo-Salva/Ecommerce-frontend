@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { orderAPI } from '../services/api';
 import './StripePaymentForm.css';
 
 const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
@@ -8,11 +7,70 @@ const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
   const elements = useElements();
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState('');
+
+  useEffect(() => {
+    const createPaymentIntent = async () => {
+      if (!amount || amount <= 0) {
+        console.error('❌ Amount inválido:', amount);
+        setErrorMessage('Monto de pago inválido');
+        return;
+      }
+
+      try {
+        const amountInCents = Math.round(amount * 100);
+        console.log('🔵 Creando PaymentIntent con amount:', amountInCents, 'centavos ($' + amount + ')');
+
+        const authTokens = localStorage.getItem('authTokens');
+        if (!authTokens) {
+          throw new Error('No hay token de autenticación');
+        }
+
+        const { access } = JSON.parse(authTokens);
+
+        const response = await fetch('http://127.0.0.1:8000/api/orders/create-payment-intent/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${access}`,
+          },
+          body: JSON.stringify({
+            amount: amountInCents,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('❌ Error del servidor:', errorData);
+          throw new Error(errorData.error || 'Error creando PaymentIntent');
+        }
+
+        const data = await response.json();
+        console.log('✅ PaymentIntent creado:', data);
+
+        const secret = data.client_secret || data.clientSecret;
+
+        if (!secret) {
+          throw new Error('No se recibió client_secret del servidor');
+        }
+        
+        setClientSecret(secret);
+      } catch (err) {
+        const errorMsg = err.message || 'Error al inicializar el pago';
+        console.error('❌ Error en createPaymentIntent:', err);
+        setErrorMessage(errorMsg);
+        onError(errorMsg);
+      }
+    };
+
+    createPaymentIntent();
+  }, [amount, onError]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
+    if (!stripe || !elements || !clientSecret) {
+      console.log('⚠️ Stripe no listo:', { stripe: !!stripe, elements: !!elements, clientSecret: !!clientSecret });
       return;
     }
 
@@ -20,33 +78,32 @@ const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
     setErrorMessage('');
 
     try {
-      // MODO SIMULACIÓN para testing sin Stripe configurado
-      // En producción, esto debería usar Stripe real
-      
-      console.log('🧪 Modo Simulación - Procesando pago de $' + amount);
-
-      // Simular validación de tarjeta
       const cardElement = elements.getElement(CardElement);
-      if (!cardElement) {
-        throw new Error('Elemento de tarjeta no encontrado');
+
+      console.log('🔵 Confirmando pago con Stripe...');
+
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
       }
 
-      // Simular procesamiento de pago (2 segundos)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Generar un ID de pago simulado
-      const fakePaymentIntentId = `sim_${Date.now()}`;
-      
-      console.log('✅ Pago simulado exitoso:', fakePaymentIntentId);
-      
-      // Llamar success con el ID simulado
-      onSuccess(fakePaymentIntentId);
+      if (paymentIntent.status === 'succeeded') {
+        console.log('✅ Pago confirmado con Stripe:', paymentIntent.id);
+        onSuccess(paymentIntent.id);
+      } else {
+        throw new Error('El pago no fue completado. Estado: ' + paymentIntent.status);
+      }
 
     } catch (err) {
       const errorMsg = err.message || 'Error procesando el pago';
+      console.error('❌ Error en handleSubmit:', err);
       setErrorMessage(errorMsg);
       onError(errorMsg);
-      console.error('❌ Error:', err);
     } finally {
       setLoading(false);
     }
@@ -54,10 +111,6 @@ const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
 
   return (
     <form onSubmit={handleSubmit} className="stripe-payment-form">
-      <div className="test-mode-badge">
-        🧪 Modo Test - Pago Simulado (para demostración)
-      </div>
-
       <div className="card-element-wrapper">
         <label>Tarjeta de Crédito/Débito</label>
         <CardElement
@@ -77,7 +130,7 @@ const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
           }}
         />
         <small style={{marginTop: '8px', color: '#666', display: 'block'}}>
-          Para testing: Usa 4242 4242 4242 4242
+          Tarjeta de prueba: 4242 4242 4242 4242
         </small>
       </div>
 
@@ -94,14 +147,19 @@ const StripePaymentForm = ({ amount, onSuccess, onError, isProcessing }) => {
 
       <button
         type="submit"
-        disabled={!stripe || loading || isProcessing}
+        disabled={!stripe || loading || isProcessing || !clientSecret}
         className="btn btn-primary btn-pay"
       >
-        {loading ? 'Procesando pago...' : `Pagar $${amount.toFixed(2)}`}
+        {!clientSecret ? 'Inicializando pago...' : loading ? 'Procesando pago...' : `Pagar $${amount.toFixed(2)}`}
       </button>
+
+      {!clientSecret && !errorMessage && (
+        <small style={{display: 'block', marginTop: '8px', color: '#666', textAlign: 'center'}}>
+          Preparando el pago...
+        </small>
+      )}
     </form>
   );
 };
 
 export default StripePaymentForm;
-

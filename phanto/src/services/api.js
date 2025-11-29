@@ -38,10 +38,8 @@ const fetchAPI = async (endpoint, options = {}) => {
       console.error('API Error Response:', errorData);
       console.error('Full error details:', JSON.stringify(errorData, null, 2));
       
-      // Extraer mensaje de error detallado
       let errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
       
-      // Si hay errores por campo, concatenarlos
       if (typeof errorData === 'object') {
         const fieldErrors = Object.entries(errorData)
           .map(([field, errors]) => {
@@ -115,6 +113,11 @@ export const productAPI = {
     const data = await fetchAPI(`/api/products/${slug}/related/`);
     return data.results || data || [];
   },
+
+  getBestSellers: async () => {
+    const data = await fetchAPI('/api/products/best_sellers/');
+    return data.results || data || [];
+  },
 };
 
 export const categoryAPI = {
@@ -150,7 +153,8 @@ export const cartAPI = {
   },
 
   updateItem: async (itemId, quantity) => {
-    return fetchAPI(`/api/cart/items/${itemId}/`, {
+    console.log('🔵 Actualizando item:', itemId, 'cantidad:', quantity);
+    return fetchAPI(`/api/cart/${itemId}/update/`, {
       method: 'PATCH',
       body: JSON.stringify({
         quantity: quantity,
@@ -159,7 +163,8 @@ export const cartAPI = {
   },
 
   removeItem: async (itemId) => {
-    return fetchAPI(`/api/cart/items/${itemId}/`, {
+    console.log('🔵 Eliminando item:', itemId);
+    return fetchAPI(`/api/cart/${itemId}/remove/`, {
       method: 'DELETE',
     });
   },
@@ -238,6 +243,17 @@ export const orderAPI = {
     });
   },
 
+  confirmPayment: async (paymentIntentId, orderData) => {
+    console.log('🔵 Confirmando pago con:', { payment_intent_id: paymentIntentId, order: orderData });
+    return fetchAPI('/api/orders/confirm-payment/', {
+      method: 'POST',
+      body: JSON.stringify({
+        payment_intent_id: paymentIntentId,
+        order: orderData,
+      }),
+    });
+  },
+
   cancel: async (orderNumber) => {
     return fetchAPI(`/api/orders/${orderNumber}/cancel/`, {
       method: 'PUT',
@@ -247,6 +263,38 @@ export const orderAPI = {
   getInvoice: async (orderNumber) => {
     return fetchAPI(`/api/orders/${orderNumber}/invoice/`, {
       method: 'GET',
+    });
+  },
+};
+
+export const reviewAPI = {
+  getProductReviews: async (slug) => {
+    const data = await fetchAPI(`/api/products/${slug}/reviews/`);
+    return data.results || data || [];
+  },
+
+  createReview: async (reviewData) => {
+    return fetchAPI('/api/products/reviews/', {
+      method: 'POST',
+      body: JSON.stringify(reviewData),
+    });
+  },
+
+  getMyReviews: async () => {
+    const data = await fetchAPI('/api/products/reviews/my_reviews/');
+    return data.results || data || [];
+  },
+
+  updateReview: async (id, reviewData) => {
+    return fetchAPI(`/api/products/reviews/${id}/`, {
+      method: 'PATCH',
+      body: JSON.stringify(reviewData),
+    });
+  },
+
+  deleteReview: async (id) => {
+    return fetchAPI(`/api/products/reviews/${id}/`, {
+      method: 'DELETE',
     });
   },
 };

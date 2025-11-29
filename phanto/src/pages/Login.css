@@ -150,6 +150,12 @@
   color: var(--text-dark);
 }
 
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
 .input-wrapper {
   position: relative;
   display: flex;
@@ -159,19 +165,22 @@
 .input-wrapper svg {
   position: absolute;
   left: 16px;
-  color: var(--text-light);
+  color: #d4a574;
   pointer-events: none;
+  z-index: 1;
+  opacity: 0.7;
 }
 
 .input-wrapper input {
   width: 100%;
-  padding: 14px 16px 14px 48px;
+  padding: 14px 16px 14px 52px;
   border: 2px solid var(--border);
   border-radius: 10px;
   font-size: 1rem;
   color: var(--text-dark);
   transition: var(--transition);
   outline: none;
+  background-color: var(--white);
 }
 
 .input-wrapper input:focus {
@@ -324,6 +333,12 @@
   }
 }
 
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 480px) {
   .login-page {
     padding: 24px 16px;
@@ -342,7 +357,7 @@
   }
 
   .input-wrapper input {
-    padding: 12px 16px 12px 44px;
+    padding: 12px 16px 12px 48px;
   }
 
   .btn-login-submit {

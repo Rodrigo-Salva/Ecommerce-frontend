@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { userAPI, orderAPI } from '../services/api';
+import { useMyReviews, useUpdateReview, useDeleteReview } from '../hooks/useReviews';
 import './Perfil.css';
 
 const Perfil = () => {
@@ -38,6 +39,17 @@ const Perfil = () => {
 
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const { data: myReviews, isLoading: loadingReviews } = useMyReviews();
+  const updateReviewMutation = useUpdateReview();
+  const deleteReviewMutation = useDeleteReview();
+
+  const [editingReview, setEditingReview] = useState(null);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    title: '',
+    comment: ''
+  });
 
   useEffect(() => {
     loadProfile();
@@ -201,6 +213,53 @@ const Perfil = () => {
     }
   };
 
+  const handleEditReview = (review) => {
+    setEditingReview(review);
+    setReviewForm({
+      rating: review.rating,
+      title: review.title,
+      comment: review.comment
+    });
+  };
+
+  const handleReviewChange = (field, value) => {
+    setReviewForm({
+      ...reviewForm,
+      [field]: value
+    });
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    try {
+      await updateReviewMutation.mutateAsync({
+        id: editingReview.id,
+        reviewData: reviewForm
+      });
+      setSuccess('Reseña actualizada correctamente');
+      setEditingReview(null);
+      setReviewForm({ rating: 5, title: '', comment: '' });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Error al actualizar la reseña');
+    }
+  };
+
+  const handleDeleteReview = async (id) => {
+    if (window.confirm('¿Estás seguro de eliminar esta reseña?')) {
+      try {
+        await deleteReviewMutation.mutateAsync(id);
+        setSuccess('Reseña eliminada correctamente');
+        setTimeout(() => setSuccess(''), 3000);
+      } catch (err) {
+        setError('Error al eliminar la reseña');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="perfil-page">
@@ -264,6 +323,12 @@ const Perfil = () => {
             onClick={() => setActiveTab('addresses')}
           >
             Direcciones
+          </button>
+          <button
+            className={`tab ${activeTab === 'reviews' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            Mis Reseñas
           </button>
           <button
             className={`tab ${activeTab === 'orders' ? 'active' : ''}`}
@@ -567,6 +632,112 @@ const Perfil = () => {
                   ))
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div className="tab-content">
+              <div className="section-header">
+                <h2>Mis Reseñas</h2>
+              </div>
+
+              {loadingReviews ? (
+                <p>Cargando reseñas...</p>
+              ) : editingReview ? (
+                <form onSubmit={handleReviewSubmit} className="review-edit-form">
+                  <h3>Editar Reseña</h3>
+                  
+                  <div className="form-group">
+                    <label>Calificación</label>
+                    <div className="rating-input">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          className={`star-input ${reviewForm.rating >= star ? 'filled' : ''}`}
+                          onClick={() => handleReviewChange('rating', star)}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Título</label>
+                    <input
+                      type="text"
+                      value={reviewForm.title}
+                      onChange={(e) => handleReviewChange('title', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>Comentario</label>
+                    <textarea
+                      value={reviewForm.comment}
+                      onChange={(e) => handleReviewChange('comment', e.target.value)}
+                      rows="5"
+                      required
+                    />
+                  </div>
+
+                  <div className="form-actions">
+                    <button type="submit" className="btn btn-primary">
+                      Guardar Cambios
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setEditingReview(null);
+                        setReviewForm({ rating: 5, title: '', comment: '' });
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              ) : myReviews && myReviews.length > 0 ? (
+                <div className="reviews-list-profile">
+                  {myReviews.map((review) => (
+                    <div key={review.id} className="review-card-profile">
+                      <div className="review-product-info">
+                        <Link to={`/producto/${review.product_slug || review.product}`} className="product-link">
+                          <h4>{review.product_name || `Producto #${review.product}`}</h4>
+                        </Link>
+                        <span className="review-date-small">
+                          {new Date(review.created_at).toLocaleDateString('es-ES')}
+                        </span>
+                      </div>
+                      
+                      <div className="review-rating-small">
+                        {[...Array(5)].map((_, i) => (
+                          <span key={i} className={i < review.rating ? 'star filled' : 'star'}>★</span>
+                        ))}
+                      </div>
+
+                      <h3 className="review-title-small">{review.title}</h3>
+                      <p className="review-comment-small">{review.comment}</p>
+
+                      {review.is_verified_purchase && (
+                        <span className="verified-badge-small">✓ Compra verificada</span>
+                      )}
+
+                      <div className="review-actions">
+                        <button className="btn-link" onClick={() => handleEditReview(review)}>
+                          Editar
+                        </button>
+                        <button className="btn-link danger" onClick={() => handleDeleteReview(review.id)}>
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-message">No has dejado reseñas aún</p>
+              )}
             </div>
           )}
 

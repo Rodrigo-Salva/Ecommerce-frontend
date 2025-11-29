@@ -107,8 +107,6 @@
 .badge-nuevo,
 .badge-descuento {
   position: absolute;
-  top: 12px;
-  right: 12px;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
@@ -117,11 +115,15 @@
 }
 
 .badge-nuevo {
+  top: 12px;
+  left: 12px;
   background: #27ae60;
   color: white;
 }
 
 .badge-descuento {
+  top: 12px;
+  right: 12px;
   background: #e74c3c;
   color: white;
 }

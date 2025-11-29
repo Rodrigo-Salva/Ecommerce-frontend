@@ -10,7 +10,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { cart, getTotalPrice, clearCart } = useCart();
-  const [step, setStep] = useState('resumen'); // resumen, datos, pago, confirmacion
+  const [step, setStep] = useState('resumen');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,10 +22,10 @@ const Checkout = () => {
     ciudad: '',
     provincia: '',
     codigoPostal: '',
-    pais: 'Perú', // Valor por defecto
+    pais: 'Perú',
     direccion: '',
     referencias: '',
-    metodoPago: 'tarjeta', // tarjeta, transferencia, efectivo
+    metodoPago: 'tarjeta',
   });
 
   const [orderNumber, setOrderNumber] = useState(null);
@@ -91,7 +91,6 @@ const Checkout = () => {
     setError('');
 
     try {
-      // Crear orden con datos del formulario
       const orderData = {
         full_name: `${formData.nombre} ${formData.apellido}`,
         email: formData.email,
@@ -113,36 +112,21 @@ const Checkout = () => {
 
       let response;
 
-      // Si es pago con tarjeta (Stripe), usar confirm_payment endpoint
       if (formData.metodoPago === 'tarjeta' && paymentIntentId) {
-        const confirmResponse = await fetch('http://127.0.0.1:8000/api/orders/confirm-payment/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            payment_intent_id: paymentIntentId,
-            order: orderData,
-          }),
-        });
-
-        if (!confirmResponse.ok) {
-          throw new Error('Error confirmando pago');
-        }
-
-        response = await confirmResponse.json();
+        response = await orderAPI.confirmPayment(paymentIntentId, orderData);
       } else {
-        // Para otros métodos (efectivo, transferencia), crear orden directamente
         response = await orderAPI.create(orderData);
       }
       
       console.log('✅ Orden creada:', response);
       
-      // Guardar número de orden y limpiar carrito
-      setOrderNumber(response.order_number);
-      clearCart();
+      if (response && response.order_number) {
+        setOrderNumber(response.order_number);
+      } else {
+        setOrderNumber(`ORD-${Date.now()}`);
+      }
       
-      // Mostrar confirmación
+      clearCart();
       setStep('confirmacion');
       
     } catch (err) {
@@ -154,7 +138,6 @@ const Checkout = () => {
   };
 
   const handleNewOrder = () => {
-    // Limpiar carrito y volver al inicio
     navigate('/');
   };
 
@@ -186,7 +169,6 @@ const Checkout = () => {
           </div>
         </div>
 
-        {/* PASO 1: Resumen */}
         {(step === 'resumen' || step === 'datos' || step === 'pago' || step === 'confirmacion') && (
           <div className="checkout-content">
             <div className="checkout-left">
@@ -249,7 +231,6 @@ const Checkout = () => {
             </div>
 
             <div className="checkout-right">
-              {/* PASO 1: Resumen - Botón */}
               {step === 'resumen' && (
                 <div className="checkout-step-content">
                   <h2>Tu Compra</h2>
@@ -272,7 +253,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {/* PASO 2: Datos de Envío */}
               {step === 'datos' && (
                 <div className="checkout-step-content">
                   <h2>Datos de Envío</h2>
@@ -433,7 +413,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {/* PASO 3: Método de Pago */}
               {step === 'pago' && (
                 <div className="checkout-step-content">
                   <h2>Método de Pago</h2>
@@ -567,7 +546,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {/* PASO 4: Confirmación */}
               {step === 'confirmacion' && (
                 <div className="checkout-step-content confirmacion">
                   <div className="confirmacion-icon">

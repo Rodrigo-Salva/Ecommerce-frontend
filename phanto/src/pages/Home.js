@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAllProducts, getAllCategories, API_URL, productAPI } from '../services/api';
+import { useBestSellers } from '../hooks/useProducts';
 import './Home.css';
 
 const Home = () => {
@@ -14,6 +15,8 @@ const Home = () => {
   const [categoriaActiva, setCategoriaActiva] = useState(categoriaParam || 'todos');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const { data: bestSellers, isLoading: loadingBestSellers } = useBestSellers();
 
   useEffect(() => {
     const fetchProductos = async () => {
@@ -147,6 +150,88 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {bestSellers && bestSellers.length > 0 && (
+        <section className="best-sellers-section">
+          <div className="container">
+            <h2 className="section-title">Los Más Vendidos</h2>
+            <p className="section-subtitle">
+              Los favoritos de nuestros clientes
+            </p>
+
+            {loadingBestSellers ? (
+              <div className="loading-container">
+                <p>Cargando más vendidos...</p>
+              </div>
+            ) : (
+              <div className="productos-grid">
+                {bestSellers.slice(0, 8).map((producto) => {
+                  const slugOrId = producto.slug || producto.id;
+                  const image = producto.primary_image || producto.image;
+                  const categoryName = producto.category?.name || producto.category || '';
+                  const price = producto.final_price || producto.price || 0;
+                  const rating = producto.average_rating || '0.0';
+
+                  return (
+                    <Link
+                      key={producto.id || slugOrId}
+                      to={`/producto/${slugOrId}`}
+                      className="producto-card"
+                      onMouseEnter={() => handleProductHover(producto.slug)}
+                    >
+                      <div className="producto-imagen">
+                        {image ? (
+                          <img src={`${API_URL}${image}`} alt={producto.name || 'Producto'} />
+                        ) : (
+                          <div className="producto-placeholder">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+                              <rect x="3" y="3" width="18" height="18" rx="2"/>
+                              <circle cx="8.5" cy="8.5" r="1.5"/>
+                              <path d="M21 15l-5-5L5 21"/>
+                            </svg>
+                          </div>
+                        )}
+                        {producto.is_new && (
+                          <span className="badge-nuevo-small">Nuevo</span>
+                        )}
+                        {producto.discount_percentage && parseFloat(producto.discount_percentage) > 0 && (
+                          <span className="badge-descuento-small">-{producto.discount_percentage}%</span>
+                        )}
+                      </div>
+
+                      <div className="producto-info">
+                        <div className="producto-categoria-tag">{categoryName}</div>
+                        <h3 className="producto-nombre">{producto.name || 'Producto'}</h3>
+
+                        <div className="producto-rating">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className={i < Math.floor(parseFloat(rating)) ? 'star filled' : 'star'}>★</span>
+                          ))}
+                          <span className="rating-numero">({rating})</span>
+                        </div>
+
+                        <div className="producto-footer">
+                          <div className="producto-precios">
+                            {producto.discount_price ? (
+                              <>
+                                <p className="producto-precio-original">${producto.price}</p>
+                                <p className="producto-precio">${price}</p>
+                              </>
+                            ) : (
+                              <p className="producto-precio">${price}</p>
+                            )}
+                          </div>
+                          <button className="btn-ver-mas">Ver más →</button>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section id="productos" className="productos-section">
         <div className="container">
