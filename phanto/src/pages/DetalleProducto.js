@@ -10,7 +10,7 @@ import './DetalleProducto.css';
 
 const DetalleProducto = () => {
   const queryClient = useQueryClient();
-  const { slugOrId } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addItemAsync, isAddingItem } = useCart();
@@ -24,18 +24,18 @@ const DetalleProducto = () => {
     comment: ''
   });
 
-  const isNumeric = /^\d+$/.test(slugOrId);
+  const isNumeric = /^\d+$/.test(slug);
 
   const { data: productoBySlug, isLoading: loadingSlug } = useProductDetail(
-    !isNumeric ? slugOrId : null
-  );
+  !isNumeric ? slug : null
+);
 
   const { data: relatedProducts } = useRelatedProducts(
-    !isNumeric ? slugOrId : null
+  !isNumeric ? slug : null
   );
 
   const { data: reviews, isLoading: loadingReviews } = useProductReviews(
-    !isNumeric ? slugOrId : null
+  !isNumeric ? slug : null
   );
 
   const createReviewMutation = useCreateReview();

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import SearchBar from './SearchBar';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -24,6 +25,8 @@ const Navbar = () => {
           <span className="logo-icon">◆</span>
           <span className="logo-text">Phaton</span>
         </Link>
+
+        <SearchBar />
 
         <div className={`navbar-menu ${menuOpen ? 'active' : ''}`}>
           <Link to="/" className="nav-link" onClick={() => setMenuOpen(false)}>

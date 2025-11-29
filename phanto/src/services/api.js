@@ -9,8 +9,7 @@ const getAuthToken = () => {
   return null;
 };
 
-const fetchAPI = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
+export const fetchAPI = async (endpoint, options = {}) => {  const url = `${API_BASE_URL}${endpoint}`;
   const token = getAuthToken();
   
   const headers = {
@@ -296,6 +295,30 @@ export const reviewAPI = {
     return fetchAPI(`/api/products/reviews/${id}/`, {
       method: 'DELETE',
     });
+  },
+};
+
+export const brandAPI = {
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    const queryString = queryParams.toString();
+    const endpoint = `/api/products/brands/${queryString ? `?${queryString}` : ''}`;
+    const data = await fetchAPI(endpoint);
+    return data.results || data || [];
+  },
+
+  getBySlug: async (slug) => {
+    return fetchAPI(`/api/products/brands/${slug}/`);
+  },
+};
+
+export const materialAPI = {
+  getAll: async (params = {}) => {
+    const queryParams = new URLSearchParams(params);
+    const queryString = queryParams.toString();
+    const endpoint = `/api/products/materials/${queryString ? `?${queryString}` : ''}`;
+    const data = await fetchAPI(endpoint);
+    return data.results || data || [];
   },
 };
 

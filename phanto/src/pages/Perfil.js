@@ -230,23 +230,39 @@ const Perfil = () => {
   };
 
   const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  e.preventDefault();
+  setError('');
+  setSuccess('');
 
-    try {
-      await updateReviewMutation.mutateAsync({
-        id: editingReview.id,
-        reviewData: reviewForm
-      });
-      setSuccess('Reseña actualizada correctamente');
-      setEditingReview(null);
-      setReviewForm({ rating: 5, title: '', comment: '' });
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Error al actualizar la reseña');
-    }
-  };
+  const productId = typeof editingReview.product === 'object' 
+    ? editingReview.product.id 
+    : editingReview.product;
+
+  console.log('🔵 Enviando actualización:', {
+    id: editingReview.id,
+    productId: productId,
+    reviewData: reviewForm
+  });
+
+  try {
+    await updateReviewMutation.mutateAsync({
+      id: editingReview.id,
+      reviewData: {
+        product: productId,
+        rating: reviewForm.rating,
+        title: reviewForm.title,
+        comment: reviewForm.comment
+      }
+    });
+    setSuccess('Reseña actualizada correctamente');
+    setEditingReview(null);
+    setReviewForm({ rating: 5, title: '', comment: '' });
+    setTimeout(() => setSuccess(''), 3000);
+  } catch (err) {
+    console.error('❌ Error completo:', err);
+    setError('Error al actualizar la reseña: ' + err.message);
+  }
+};
 
   const handleDeleteReview = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta reseña?')) {

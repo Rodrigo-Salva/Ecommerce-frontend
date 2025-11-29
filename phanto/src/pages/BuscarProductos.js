@@ -1,41 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCategoryProducts, useCategoryDetail } from '../hooks/useCategories';
+import { useProducts } from '../hooks/useProducts';
 import { API_URL, productAPI } from '../services/api';
 import FilterSidebar from '../components/FilterSidebar';
-import './ProductosPorCategoria.css';
+import './ProductosPorCategoria.css'; // Reutilizamos los mismos estilos
 
-const ProductosPorCategoria = () => {
+const BuscarProductos = () => {
   const queryClient = useQueryClient();
-  const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  const [filters, setFilters] = useState(() => ({
-  ordering: searchParams.get('ordering') || '',
-  brand: searchParams.get('brand') || '',
-  material: searchParams.get('material') || '',
-  min_price: searchParams.get('min_price') || '',
-  max_price: searchParams.get('max_price') || '',
-  in_stock: searchParams.get('in_stock') || '',
-}));
+  const searchQuery = searchParams.get('q') || '';
 
-useEffect(() => {
-  setFilters({
+  const [filters, setFilters] = useState(() => ({
+    search: searchQuery,
     ordering: searchParams.get('ordering') || '',
     brand: searchParams.get('brand') || '',
     material: searchParams.get('material') || '',
     min_price: searchParams.get('min_price') || '',
     max_price: searchParams.get('max_price') || '',
     in_stock: searchParams.get('in_stock') || '',
-  });
-}, [searchParams]);
+  }));
 
-  const { data: categoryData, isLoading: categoryLoading } = useCategoryDetail(slug);
-  const { data: productsData, isLoading: productsLoading, error } = useCategoryProducts(slug, filters);
+  useEffect(() => {
+    setFilters({
+      search: searchQuery,
+      ordering: searchParams.get('ordering') || '',
+      brand: searchParams.get('brand') || '',
+      material: searchParams.get('material') || '',
+      min_price: searchParams.get('min_price') || '',
+      max_price: searchParams.get('max_price') || '',
+      in_stock: searchParams.get('in_stock') || '',
+    });
+  }, [searchParams, searchQuery]);
 
-  const isLoading = categoryLoading || productsLoading;
+  const { data: productsData, isLoading, error } = useProducts(filters);
 
   const handleFilterChange = (key, value) => {
     const newParams = new URLSearchParams(searchParams);
@@ -49,6 +49,9 @@ useEffect(() => {
 
   const handleClearFilters = () => {
     const newParams = new URLSearchParams();
+    if (searchQuery) {
+      newParams.set('q', searchQuery);
+    }
     if (filters.ordering) {
       newParams.set('ordering', filters.ordering);
     }
@@ -74,7 +77,7 @@ useEffect(() => {
         <div className="container">
           <div className="loading-container">
             <div className="spinner-large"></div>
-            <p>Cargando productos...</p>
+            <p>Buscando productos...</p>
           </div>
         </div>
       </div>
@@ -91,10 +94,10 @@ useEffect(() => {
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
-            <h3>Error al cargar productos</h3>
+            <h3>Error en la búsqueda</h3>
             <p>{error.message}</p>
-            <Link to="/categorias" className="btn btn-primary">
-              Volver a Categorías
+            <Link to="/" className="btn btn-primary">
+              Volver al Inicio
             </Link>
           </div>
         </div>
@@ -103,7 +106,6 @@ useEffect(() => {
   }
 
   const productos = productsData?.results || productsData || [];
-  const categoria = categoryData || {};
 
   return (
     <div className="productos-categoria-page fade-in">
@@ -111,17 +113,17 @@ useEffect(() => {
         <div className="breadcrumb">
           <Link to="/">Inicio</Link>
           <span>/</span>
-          <Link to="/categorias">Categorías</Link>
-          <span>/</span>
-          <span>{categoria.name}</span>
+          <span>Búsqueda</span>
         </div>
 
         <div className="categoria-header">
           <div className="categoria-header-content">
-            <h1 className="categoria-titulo-page">{categoria.name}</h1>
-            {categoria.description && (
-              <p className="categoria-description">{categoria.description}</p>
-            )}
+            <h1 className="categoria-titulo-page">
+              {searchQuery ? `Resultados para "${searchQuery}"` : 'Todos los productos'}
+            </h1>
+            <p className="categoria-description">
+              {productos.length} {productos.length === 1 ? 'producto encontrado' : 'productos encontrados'}
+            </p>
           </div>
         </div>
 
@@ -206,12 +208,13 @@ useEffect(() => {
             {productos.length === 0 ? (
               <div className="no-productos">
                 <svg width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/>
+                  <line x1="8" y1="11" x2="14" y2="11"/>
                 </svg>
-                <h3>No hay productos con estos filtros</h3>
-                <p>Intenta ajustar los filtros o borrarlos</p>
+                <h3>No se encontraron productos</h3>
+                <p>Intenta con otros términos de búsqueda o ajusta los filtros</p>
                 <button className="btn btn-primary" onClick={handleClearFilters}>
                   Limpiar Filtros
                 </button>
@@ -290,4 +293,4 @@ useEffect(() => {
   );
 };
 
-export default ProductosPorCategoria;
+export default BuscarProductos;

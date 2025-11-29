@@ -1,6 +1,6 @@
 // src/hooks/useCategories.js
 import { useQuery } from '@tanstack/react-query';
-import { categoryAPI } from '../services/api';
+import { categoryAPI, fetchAPI } from '../services/api';
 
 export const useCategories = () => {
   return useQuery({
@@ -19,11 +19,26 @@ export const useCategoryDetail = (slug) => {
   });
 };
 
-export const useCategoryProducts = (slug) => {
+export const useCategoryProducts = (slug, filters = {}) => {
   return useQuery({
-    queryKey: ['categoryProducts', slug],
-    queryFn: () => categoryAPI.getProducts(slug),
+    queryKey: ['categoryProducts', slug, filters],
+    queryFn: async () => {
+      const queryParams = new URLSearchParams();
+      
+      // Agregar filtros a la query
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) {
+          queryParams.append(key, filters[key]);
+        }
+      });
+      
+      const queryString = queryParams.toString();
+      const endpoint = `/api/products/categories/${slug}/products/${queryString ? `?${queryString}` : ''}`;
+      
+      const data = await fetchAPI(endpoint);
+      return data;
+    },
     enabled: !!slug,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 2,
   });
 };
