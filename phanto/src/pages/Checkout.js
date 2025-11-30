@@ -32,7 +32,7 @@ const Checkout = () => {
 
   const cartItems = cart?.items || [];
   const subtotal = getTotalPrice() || 0;
-  const envio = subtotal >= 1000 ? 0 : 50;
+  const envio = subtotal >= 1000 ? 0 : 10;
   const total = subtotal + envio;
 
   if (cartItems.length === 0) {

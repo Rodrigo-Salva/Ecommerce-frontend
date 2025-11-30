@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { userAPI, orderAPI } from '../services/api';
+import { userAPI } from '../services/api';
 import { useMyReviews, useUpdateReview, useDeleteReview } from '../hooks/useReviews';
 import './Perfil.css';
 
@@ -37,9 +37,6 @@ const Perfil = () => {
     is_default: false
   });
 
-  const [orders, setOrders] = useState([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-
   const { data: myReviews, isLoading: loadingReviews } = useMyReviews();
   const updateReviewMutation = useUpdateReview();
   const deleteReviewMutation = useDeleteReview();
@@ -54,7 +51,6 @@ const Perfil = () => {
   useEffect(() => {
     loadProfile();
     loadAddresses();
-    loadOrders();
   }, []);
 
   const loadProfile = async () => {
@@ -80,18 +76,6 @@ const Perfil = () => {
       setAddresses(data);
     } catch (err) {
       console.error('Error al cargar direcciones:', err);
-    }
-  };
-
-  const loadOrders = async () => {
-    try {
-      setLoadingOrders(true);
-      const data = await orderAPI.getAll();
-      setOrders(data.results || data);
-    } catch (err) {
-      console.error('Error al cargar órdenes:', err);
-    } finally {
-      setLoadingOrders(false);
     }
   };
 
@@ -230,39 +214,33 @@ const Perfil = () => {
   };
 
   const handleReviewSubmit = async (e) => {
-  e.preventDefault();
-  setError('');
-  setSuccess('');
+    e.preventDefault();
+    setError('');
+    setSuccess('');
 
-  const productId = typeof editingReview.product === 'object' 
-    ? editingReview.product.id 
-    : editingReview.product;
+    const productId = typeof editingReview.product === 'object' 
+      ? editingReview.product.id 
+      : editingReview.product;
 
-  console.log('🔵 Enviando actualización:', {
-    id: editingReview.id,
-    productId: productId,
-    reviewData: reviewForm
-  });
-
-  try {
-    await updateReviewMutation.mutateAsync({
-      id: editingReview.id,
-      reviewData: {
-        product: productId,
-        rating: reviewForm.rating,
-        title: reviewForm.title,
-        comment: reviewForm.comment
-      }
-    });
-    setSuccess('Reseña actualizada correctamente');
-    setEditingReview(null);
-    setReviewForm({ rating: 5, title: '', comment: '' });
-    setTimeout(() => setSuccess(''), 3000);
-  } catch (err) {
-    console.error('❌ Error completo:', err);
-    setError('Error al actualizar la reseña: ' + err.message);
-  }
-};
+    try {
+      await updateReviewMutation.mutateAsync({
+        id: editingReview.id,
+        reviewData: {
+          product: productId,
+          rating: reviewForm.rating,
+          title: reviewForm.title,
+          comment: reviewForm.comment
+        }
+      });
+      setSuccess('Reseña actualizada correctamente');
+      setEditingReview(null);
+      setReviewForm({ rating: 5, title: '', comment: '' });
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Error al actualizar reseña:', err);
+      setError('Error al actualizar la reseña: ' + err.message);
+    }
+  };
 
   const handleDeleteReview = async (id) => {
     if (window.confirm('¿Estás seguro de eliminar esta reseña?')) {
@@ -345,12 +323,6 @@ const Perfil = () => {
             onClick={() => setActiveTab('reviews')}
           >
             Mis Reseñas
-          </button>
-          <button
-            className={`tab ${activeTab === 'orders' ? 'active' : ''}`}
-            onClick={() => setActiveTab('orders')}
-          >
-            Mis Órdenes
           </button>
         </div>
 
@@ -729,7 +701,7 @@ const Perfil = () => {
                       
                       <div className="review-rating-small">
                         {[...Array(5)].map((_, i) => (
-                          <span key={i} className={i < review.rating ? 'star filled' : 'star'}>★</span>
+                          <span key={i} className={i < review.rating ? 'star filled' : 'star'} >★</span>
                         ))}
                       </div>
 
@@ -753,64 +725,6 @@ const Perfil = () => {
                 </div>
               ) : (
                 <p className="empty-message">No has dejado reseñas aún</p>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'orders' && (
-            <div className="tab-content">
-              <div className="section-header">
-                <h2>Mis Órdenes</h2>
-              </div>
-
-              {loadingOrders ? (
-                <p>Cargando órdenes...</p>
-              ) : orders.length === 0 ? (
-                <p className="empty-message">No tienes órdenes aún</p>
-              ) : (
-                <div className="orders-list">
-                  {orders.map((order) => (
-                    <div key={order.id} className="order-card">
-                      <div className="order-header">
-                        <div>
-                          <h4>Orden #{order.order_number}</h4>
-                          <p className="order-date">
-                            {new Date(order.created_at).toLocaleDateString('es-PE')}
-                          </p>
-                        </div>
-                        <div className={`order-status status-${order.status}`}>
-                          {order.status === 'pending' && 'Pendiente'}
-                          {order.status === 'confirmed' && 'Confirmada'}
-                          {order.status === 'processing' && 'En Proceso'}
-                          {order.status === 'shipped' && 'Enviada'}
-                          {order.status === 'in_transit' && 'En Tránsito'}
-                          {order.status === 'delivered' && 'Entregada'}
-                          {order.status === 'cancelled' && 'Cancelada'}
-                          {order.status === 'refunded' && 'Reembolsada'}
-                        </div>
-                      </div>
-                      <div className="order-items">
-                        <p><strong>Artículos:</strong> {order.items?.length || 0}</p>
-                        {order.items?.map((item, idx) => (
-                          <div key={idx} className="order-item">
-                            <span>{item.product_name}</span>
-                            <span className="qty">x{item.quantity}</span>
-                            <span className="price">${item.price}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="order-footer">
-                        <div className="order-total">
-                          <strong>Total:</strong>
-                          <span>${order.total_amount}</span>
-                        </div>
-                        <button className="btn btn-secondary" onClick={() => orderAPI.getInvoice(order.order_number)}>
-                          Ver Factura
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
           )}

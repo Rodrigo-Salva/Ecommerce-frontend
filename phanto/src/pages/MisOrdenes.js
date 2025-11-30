@@ -185,71 +185,31 @@ const MisOrdenes = () => {
                     </div>
                   </div>
 
-                  <div className="orden-cliente">
-                    <div className="cliente-item">
-                      <span className="label">Cliente:</span>
-                      <span className="valor">{order.full_name}</span>
-                    </div>
-                    <div className="cliente-item">
-                      <span className="label">Email:</span>
-                      <span className="valor">{order.email}</span>
-                    </div>
-                  </div>
-
                   <div className="orden-items">
                     <strong>Artículos ({order.items?.length || 0})</strong>
                     <div className="items-list">
                       {order.items?.map((item, idx) => (
                         <div key={idx} className="item-row">
-                          <span className="item-name">{item.product_name}</span>
+                          <span className="item-name">{item.product_name || `Producto #${item.product}`}</span>
                           <span className="item-qty">x{item.quantity}</span>
-                          <span className="item-price">${parseFloat(item.product_price).toFixed(2)}</span>
+                          <span className="item-price">${parseFloat(item.price || 0).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   <div className="orden-totales">
-                    <div className="total-row">
-                      <span>Subtotal:</span>
-                      <span>${parseFloat(order.subtotal || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="total-row">
-                      <span>Envío:</span>
-                      <span>${parseFloat(order.shipping_cost || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="total-row">
-                      <span>Impuesto:</span>
-                      <span>${parseFloat(order.tax || 0).toFixed(2)}</span>
-                    </div>
-                    {order.discount > 0 && (
-                      <div className="total-row discount">
-                        <span>Descuento:</span>
-                        <span>-${parseFloat(order.discount).toFixed(2)}</span>
-                      </div>
-                    )}
                     <div className="total-row total-final">
                       <strong>Total:</strong>
-                      <strong>${parseFloat(order.total).toFixed(2)}</strong>
+                      <strong>${parseFloat(order.total || 0).toFixed(2)}</strong>
+                    </div>
+                    <div className="total-row">
+                      <span>Estado de Pago:</span>
+                      <span className={order.is_paid ? 'paid' : 'pending'}>
+                        {order.is_paid ? '✅ Pagado' : '⏳ Pendiente'}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="orden-metodo-pago">
-                    <span className="label">Método de pago:</span>
-                    <span className="metodo">
-                      {order.payment_method === 'credit_card' && '💳 Tarjeta'}
-                      {order.payment_method === 'transfer' && '🏦 Transferencia'}
-                      {order.payment_method === 'cash' && '💵 Efectivo'}
-                      {!['credit_card', 'transfer', 'cash'].includes(order.payment_method) && order.payment_method}
-                    </span>
-                  </div>
-
-                  {order.order_notes && (
-                    <div className="orden-notas">
-                      <span className="label">Notas:</span>
-                      <p>{order.order_notes}</p>
-                    </div>
-                  )}
 
                   <div className="orden-acciones">
                     <button 
@@ -258,7 +218,7 @@ const MisOrdenes = () => {
                     >
                       {selectedOrder?.id === order.id ? 'Ocultar Detalles' : 'Ver Detalles'}
                     </button>
-                    {order.status in ['pending', 'confirmed'] && (
+                    {['pending', 'confirmed'].includes(order.status) && (
                       <button 
                         className="btn btn-danger"
                         onClick={() => handleCancelOrder(order.order_number)}
@@ -277,37 +237,12 @@ const MisOrdenes = () => {
                   {selectedOrder?.id === order.id && (
                     <div className="orden-detalles-expandido">
                       <div className="detalles-seccion">
-                        <h4>Dirección de Envío</h4>
-                        <p>{order.address_line1}</p>
-                        {order.address_line2 && <p>{order.address_line2}</p>}
-                        <p>{order.city}, {order.state} {order.postal_code}</p>
-                        <p>{order.country}</p>
-                      </div>
-
-                      {order.history && order.history.length > 0 && (
-                        <div className="detalles-seccion">
-                          <h4>Historial de Estados</h4>
-                          <div className="timeline">
-                            {order.history.map((h, idx) => (
-                              <div key={idx} className="timeline-item">
-                                <span className="timeline-status">{getStatusLabel(h.status)}</span>
-                                <span className="timeline-date">
-                                  {new Date(h.created_at).toLocaleDateString('es-PE')}
-                                </span>
-                                {h.comment && <p className="timeline-comment">{h.comment}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="detalles-seccion">
-                        <h4>Información de Pago</h4>
-                        <p><strong>Estado:</strong> {order.is_paid ? '✅ Pagado' : '⏳ Pendiente'}</p>
-                        {order.payment_id && <p><strong>ID Pago:</strong> {order.payment_id}</p>}
-                        {order.paid_at && (
-                          <p><strong>Fecha de Pago:</strong> {new Date(order.paid_at).toLocaleDateString('es-PE')}</p>
-                        )}
+                        <h4>Información de la Orden</h4>
+                        <p><strong>ID:</strong> {order.id}</p>
+                        <p><strong>Número:</strong> {order.order_number}</p>
+                        <p><strong>Fecha:</strong> {new Date(order.created_at).toLocaleString('es-PE')}</p>
+                        <p><strong>Estado:</strong> {getStatusLabel(order.status)}</p>
+                        <p><strong>Estado de Pago:</strong> {order.is_paid ? '✅ Pagado' : '⏳ Pendiente'}</p>
                       </div>
                     </div>
                   )}
