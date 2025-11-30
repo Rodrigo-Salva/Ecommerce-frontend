@@ -212,7 +212,7 @@ const Carrito = () => {
               <div className="resumen-linea">
                 <span>Envío</span>
                 <span className={totalPrice >= 1000 ? 'gratis' : ''}>
-                  {totalPrice >= 1000 ? 'Gratis' : '$50.00'}
+                  {totalPrice >= 1000 ? 'Gratis' : '$10.00'}
                 </span>
               </div>
               {totalPrice >= 1000 && (
@@ -226,7 +226,7 @@ const Carrito = () => {
               <div className="resumen-divider"></div>
               <div className="resumen-linea total">
                 <span>Total</span>
-                <span>${(totalPrice + (totalPrice >= 1000 ? 0 : 50)).toFixed(2)}</span>
+                <span>${(totalPrice + (totalPrice >= 1000 ? 0 : 10)).toFixed(2)}</span>
               </div>
             </div>
 
